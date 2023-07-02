@@ -24,7 +24,15 @@ namespace nxml
     struct ISerializable
     {
         virtual string  ToString() = 0;
-        virtual void    FromString() = 0;
+        virtual void    FromString(string str) = 0;
+    };
+    /// <sumarry>
+    /// Tag attribute stuct
+    /// </summary>
+    struct Attribute : ISerializable
+    {
+        string Key;
+        string Value;
     };
 
     /// <summary>
@@ -33,9 +41,11 @@ namespace nxml
     struct Tag : ISerializable
     {
         ValueType Type;
-
+        
         string Key;
         string Value;
+
+        vector<Attribute> Attributes;
     };
 
     /// <summary>
@@ -45,8 +55,8 @@ namespace nxml
     {
         const string VERSION = "1.0";
 
-        virtual string  ToString()      override;
-        virtual void    FromString()    override;
+        virtual string  ToString()      override {return "<?xml version=\"1.0\"?>";}
+        virtual void    FromString(string str)    override {}
     };
     
     /// <summary>
@@ -59,23 +69,6 @@ namespace nxml
         vector<Tag> Tags;        
     };
 
-    /// <summary>
-    /// Derived type for elements with a value. Cannot have any children.
-    /// </summary>
-    struct ValueElement : Element
-    {
-        ValueType Type;
-        string ValueText;
-    };
-
-    /// <summary>
-    /// Derived type for element which contains N number of child elements.
-    /// </summary>
-    struct ContainerElement : Element
-    {
-        vector<Element*> ChildElements;
-    };
-
     struct Document
     {
         Declaration Decl;
@@ -84,8 +77,49 @@ namespace nxml
 
     class Parser
     {
+    protected:
+        enum class Mode
+        {
+            Declaration,
+            TagOpen,
+            TagAttribute,
+            TagValue,
+            TagClose
+        };
+
+        Mode p_Mode;
+
     public:
-        static Document GetFromString(const string& xml);
-        static string   ToString(const Document& xml);
+        Parser();
+        Document GetFromString(string& xml);
+        string   ToString(Document& xml);
     };
 }
+// TODO Disable
+#define NXML_IMPL
+#ifdef NXML_IMPL
+#include <sstream>
+nxml::Parser::Parser()
+{
+    p_Mode = Parser::Mode::Declaration;
+}
+
+nxml::Document nxml::Parser::GetFromString(std::string& xml)
+{
+    std::istringstream iter(xml);
+    std::string line;
+
+    nxml::Document doc;
+
+    while (getline(iter, line))
+    {
+        for(char c : line)
+        {
+            
+        }
+        std::cout << "Line : " << line << std::endl;
+    }
+
+    return doc;
+}
+#endif
