@@ -115,7 +115,7 @@ nxml::Document nxml::Parser::GetFromString(std::string& xml)
     {
         for(char c : line)
         {
-            
+            std::cout << c << std::endl;
         }
         std::cout << "Line : " << line << std::endl;
     }

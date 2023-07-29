@@ -15,9 +15,8 @@ std::string LoadFileAsString(const char* path) {
 
 int main() {
     using namespace std;
-
     string sampleXml = LoadFileAsString("sample.xml");
     nxml::Parser parser;
 
-    parser.GetFromString(sampleXml);
+    nxml::Document doc = parser.GetFromString(sampleXml);
 }
