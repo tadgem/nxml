@@ -73,6 +73,9 @@ namespace nxml
         vector<Attribute> Attributes;        
     };
 
+    /// <summary>
+    /// Element which contains a value, no children
+    /// </summary>
     struct ValueElement : Element
     {
         string InnerValue;
@@ -81,6 +84,9 @@ namespace nxml
         virtual void    FromString(string str)    override {}
     };
 
+    /// <summary>
+    /// Element which contains child elements
+    /// </summary>
     struct ComplexElement : Element
     {
         vector<Element*> InnerElements;
@@ -88,10 +94,13 @@ namespace nxml
         virtual void    FromString(string str)    override {}
     };
 
+    /// <summary>
+    /// Container for declaration and root element
+    /// </summary>
     struct Document
     {
         Declaration Decl;
-        Element* Root;
+        vector<Element*> RootElements;
     };
 
     class Parser
@@ -389,6 +398,14 @@ nxml::Document nxml::Parser::GetFromString(std::string& xml)
     for(int i = 0; i < xml.size(); i++)
     {
         ProcessCharacter(xml, i);
+    }
+    
+    cout << "Element Stack Size : " << p_ElementStack.size() << endl;
+
+    while(!p_ElementStack.empty())
+    {
+        doc.RootElements.emplace_back(p_ElementStack.top());
+        p_ElementStack.pop();
     }
 
     return doc;

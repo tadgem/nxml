@@ -13,10 +13,20 @@ std::string LoadFileAsString(const char* path) {
     return str;
 }
 
+void RecursePrintElement(nxml::Element* element)
+{
+    std::cout << "Element Name : " << element->ElementName << std::endl;
+}
+
 int main() {
     using namespace std;
     string sampleXml = LoadFileAsString("sample.xml");
     nxml::Parser parser;
 
     nxml::Document doc = parser.GetFromString(sampleXml);
+
+    for(nxml::Element* e : doc.RootElements)
+    {
+        RecursePrintElement(e);
+    }
 }
