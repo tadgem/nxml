@@ -131,6 +131,7 @@ namespace nxml
         stringstream p_AttributeValueStream;
 
         stack<Element*> p_ElementStack;
+        stack<Attribute> p_AttributeStack;
         
         string GetModeName(Mode& mode);
 
@@ -194,6 +195,12 @@ void nxml::Parser::CreateElement(bool complex)
         p_ElementStack.emplace(new ValueElement());
     }
     p_ElementStack.top()->ElementName = elementName;
+
+    while (!p_AttributeStack.empty())
+    {
+        p_ElementStack.top()->Attributes.push_back(p_AttributeStack.top());
+        p_AttributeStack.pop();
+    }
 }
 
 void nxml::Parser::CloseElement()
@@ -217,7 +224,7 @@ void nxml::Parser::CloseElement()
 void nxml::Parser::AssignElementValue()
 {
     ValueElement* e = static_cast<ValueElement*>(p_ElementStack.top());
-    // assign e value;
+    e->InnerValue = p_ElementValueStream.str();
 }
 
 void nxml::Parser::CreateAttribute()
@@ -226,7 +233,7 @@ void nxml::Parser::CreateAttribute()
     attr.Key = p_AttributeNameStream.str();
     attr.SerializedValue = p_AttributeValueStream.str();
 
-    p_ElementStack.top()->Attributes.push_back(attr);    
+    p_AttributeStack.push(attr);
 }
 
 void nxml::Parser::LogCurrentElementName()
@@ -393,6 +400,7 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
         case Mode::ElementValue:
             if(c == '<')
             {
+                AssignElementValue();
                 SwitchMode(Mode::ElementClose, c);
                 return;
             }
