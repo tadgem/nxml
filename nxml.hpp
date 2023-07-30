@@ -39,6 +39,9 @@ namespace nxml
         string Key;
         string SerializedValue;
 
+        virtual string  ToString()      override {return "<?xml version=\"1.0\"?>";}
+        virtual void    FromString(string str)    override {}
+        
         virtual ~Attribute() {};
     };
 
@@ -129,10 +132,11 @@ namespace nxml
         void CloseElement();
         void AssignElementValue();
         void CreateAttribute();
-        void CloseAttribute();
-
         void LogCurrentElementName();
         void LogCurrentAttributes();
+
+        void ClearCurrentElement();
+        void ClearCurrentAttribute();
     };
 }
 
@@ -153,6 +157,20 @@ namespace nxml
 nxml::Parser::Parser()
 {
     p_Mode = Parser::Mode::Declaration;
+}
+
+void nxml::Parser::ClearCurrentElement()
+{        
+    // CreateElement;
+    p_ElementNameStream.str(std::string());
+    p_ElementValueStream.str(std::string());
+}
+
+void nxml::Parser::ClearCurrentAttribute()
+{
+    // Clear streams
+    p_AttributeNameStream.str(std::string());
+    p_AttributeValueStream.str(std::string());
 }
 
 void nxml::Parser::CreateElement(bool complex)
@@ -188,14 +206,12 @@ void nxml::Parser::AssignElementValue()
 
 void nxml::Parser::CreateAttribute()
 {
+    Attribute attr;
+    attr.Key = p_AttributeNameStream.str();
+    attr.SerializedValue = p_AttributeValueStream.str();
 
+    p_ElementStack.top()->Attributes.push_back(attr);    
 }
-
-void nxml::Parser::CloseAttribute()
-{
-
-}
-
 
 void nxml::Parser::LogCurrentElementName()
 {
@@ -203,9 +219,6 @@ void nxml::Parser::LogCurrentElementName()
     cout << "\n" << "Current Element Name : " << p_ElementNameStream.str() << endl;
     // Clear Element streams
     cout << "Current Element Value : " << p_ElementValueStream.str() << "\n" << endl;
-    
-    p_ElementNameStream.str(std::string());
-    p_ElementValueStream.str(std::string());
 }
 
 void nxml::Parser::LogCurrentAttributes()
@@ -213,9 +226,7 @@ void nxml::Parser::LogCurrentAttributes()
     // create attribute object
     cout << "\n" << "Current Attribute Name : " << p_AttributeNameStream.str() << endl;
     cout << "Current Attribute Value : " << p_AttributeValueStream.str() << "\n" << endl;
-    // Clear streams
-    p_AttributeNameStream.str(std::string());
-    p_AttributeValueStream.str(std::string());
+    ClearCurrentAttribute();
 }
 
 
@@ -275,13 +286,11 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
             }
             if(c == '>')
             {
-                LogCurrentElementName();
                 SwitchMode(Mode::GetInnerElementType, c);
                 return;
             }
             if(c == ' ')
             {
-                LogCurrentElementName();
                 SwitchMode(Mode::WaitForAttribute, c);
                 return;
             }
@@ -322,12 +331,14 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
             if(c == '"') return;
             if(c == ' ')
             {
+                CreateAttribute();
                 LogCurrentAttributes();
                 SwitchMode(Mode::WaitForAttribute, c);
                 return;
             }
             if(c == '>')
             {
+                CreateAttribute();
                 LogCurrentAttributes();
                 SwitchMode(Mode::GetInnerElementType, c);
                 return;
@@ -337,17 +348,21 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
             break;
         case Mode::ElementClose:
             LogCurrentElementName();
+            ClearCurrentElement();
             SwitchMode(Mode::WaitForElementOpen, c); 
             break;
         case Mode::GetInnerElementType:
             if(c == ' ') return;
             if(c == '<')
             {
+                CreateElement(true);
+                ClearCurrentElement();
                 SwitchMode(Mode::ElementOpen, c);
                 return;
             }
             if(iswalnum(c))
             {
+                CreateElement(false);
                 p_ElementValueStream << c;
                 SwitchMode(Mode::ElementValue, c);
                 return;
