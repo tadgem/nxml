@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sstream>
 
 namespace nxml
 {
@@ -84,22 +85,35 @@ namespace nxml
 
     class Parser
     {
-    protected:
-        enum class Mode
-        {
-            Declaration,
-            TagOpen,
-            TagAttributeName,
-            TagAttributeValue,
-            TagClose
-        };
-
-        Mode p_Mode;
-        void HandleParserStateSwitch(std::string& xmlString, int charIndex);
     public:
         Parser();
         Document GetFromString(string& xml);
         string   ToString(Document& xml);
+
+        enum class Mode
+        {
+            Declaration,
+            WaitForTagOpen,
+            TagOpen,
+            WaitForAttribute,
+            TagAttributeName,
+            TagAttributeValue,
+            TagClose
+        };
+    protected:
+        Mode p_Mode;
+
+        stringstream p_TagNameStream;
+        stringstream p_TagValueStream;
+        stringstream p_AttributeNameStream;
+        stringstream p_AttributeValueStream;
+        
+        string GetModeName(Mode& mode);
+
+        void SwitchMode(Mode newMode, char current);
+        void ProcessCharacter(std::string& xmlString, int charIndex);
+
+        void LogCurrentTagName();
     };
 }
 // TODO Disable
@@ -111,7 +125,44 @@ nxml::Parser::Parser()
     p_Mode = Parser::Mode::Declaration;
 }
 
-void nxml::Parser::HandleParserStateSwitch(std::string& xmlString, int charIndex)
+void nxml::Parser::LogCurrentTagName()
+{
+    // create tag object
+    cout << "Current Tag Name : " << p_TagNameStream.str() << endl;
+    // Clear tag streams
+    p_TagNameStream.str(std::string());
+}
+
+std::string nxml::Parser::GetModeName(nxml::Parser::Mode& mode)
+{
+    switch(mode)
+    {
+        case Mode::Declaration:
+        return "Declaration";
+        case Mode::WaitForTagOpen:
+        return "WaitForTagOpen";
+        case Mode::TagOpen:
+        return "TagOpen";
+        case Mode::TagClose:
+        return "TagClose";
+        case Mode::WaitForAttribute:
+        return "WaitForAttribute";
+        case Mode::TagAttributeName:
+        return "TagAttributeName";
+        case Mode::TagAttributeValue:
+        return "TagAttributeValue";
+        default:
+        return "Unknown Mode Type";
+    }
+}
+
+void nxml::Parser::SwitchMode(nxml::Parser::Mode newMode, char current)
+{
+    cout << "Current Mode : " << GetModeName(p_Mode) << ", Switching to Mode : " << GetModeName(newMode) << ", From Character : '" << current << "'\n";
+    p_Mode = newMode;
+}
+
+void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
 {
     char c  = xmlString.at(charIndex);
     char nc = xmlString.at(charIndex + 1);
@@ -119,18 +170,75 @@ void nxml::Parser::HandleParserStateSwitch(std::string& xmlString, int charIndex
     switch(p_Mode)
     {
         case Mode::Declaration:
-            if(c == '?' && nc == '>') p_Mode = Mode::TagOpen;
+            if(c == '?' && nc == '>') SwitchMode(Mode::WaitForTagOpen, c);
+            break;
+        case Mode::WaitForTagOpen:
+            if(c != '<') return;
+            SwitchMode(Mode::TagOpen, c);
             break;
         case Mode::TagOpen:
+            if(c == '/')
+            {
+                SwitchMode(Mode::TagClose, c);
+                return;
+            }
+            if(c == '>')
+            {
+                LogCurrentTagName();
+                SwitchMode(Mode::WaitForTagOpen, c);
+                return;
+            }
+            if(c == ' ')
+            {
+                LogCurrentTagName();
+                SwitchMode(Mode::WaitForAttribute, c);
+                return;
+            }
+            // push char into tag name stream
+            p_TagNameStream << c;
             break;
+        case Mode::WaitForAttribute:
+            if(c == ' ') return;
+            // create attribute object
+            cout << "Current Attribute Name : " << p_AttributeNameStream.str() << endl;
+            cout << "Current Attribute Value : " << p_AttributeValueStream.str() << endl;
+            // Clear streams
+            p_AttributeNameStream.str(std::string());
+            p_AttributeValueStream.str(std::string());
+
+            if(c == '>') 
+            {
+                SwitchMode(Mode::WaitForTagOpen, c);
+                return;
+            }
+            if(c == '/')
+            {
+                SwitchMode(Mode::TagClose, c);
+                return;
+            }
+            SwitchMode(Mode::TagAttributeName, c);
+            break;    
         case Mode::TagAttributeName:
+            if(c == '=') SwitchMode(Mode::TagAttributeValue, c);
+            // push char into attribute name stream
+            p_AttributeNameStream << c;
             break;
         case Mode::TagAttributeValue:
+            if(c == '=') return;
+            if(c == '"' && p_AttributeValueStream.str().size() < 0) return;
+            if(c == '"')
+            {
+                SwitchMode(Mode::WaitForAttribute, c);
+                return;
+            }
+            // push char into attribute value stream;
+            p_AttributeValueStream << c;
             break;
         case Mode::TagClose:
+            LogCurrentTagName();
+            SwitchMode(Mode::WaitForTagOpen, c); 
             break;
         default:
-            std::cout << "nxml::Parser : Error : Unknown parsing state";
             break;
     }
 }
@@ -141,7 +249,7 @@ nxml::Document nxml::Parser::GetFromString(std::string& xml)
 
     for(int i = 0; i < xml.size(); i++)
     {
-        HandleParserStateSwitch(xml, i);
+        ProcessCharacter(xml, i);
     }
 
     return doc;
