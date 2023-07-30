@@ -1,0 +1,1 @@
+add_executable(nxml-demo demo.cpp nxml.hpp)

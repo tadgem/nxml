@@ -274,6 +274,10 @@ void nxml::Parser::SwitchMode(nxml::Parser::Mode newMode, char current)
 
 void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
 {
+    if (charIndex + 1 == xmlString.size())
+    {
+        return;
+    }
     char c  = xmlString.at(charIndex);
     char nc = xmlString.at(charIndex + 1);
 

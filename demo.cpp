@@ -20,7 +20,7 @@ void RecursePrintElement(nxml::Element* element)
 
 int main() {
     using namespace std;
-    string sampleXml = LoadFileAsString("sample.xml");
+    string sampleXml = LoadFileAsString("../sample.xml");
     nxml::Parser parser;
 
     nxml::Document doc = parser.GetFromString(sampleXml);
