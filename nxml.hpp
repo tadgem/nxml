@@ -184,6 +184,7 @@ void nxml::Parser::ClearCurrentAttribute()
 
 void nxml::Parser::CreateElement(bool complex)
 {
+    string elementName = p_ElementNameStream.str();
     if(complex)
     {
         p_ElementStack.emplace(new ComplexElement());
@@ -192,13 +193,19 @@ void nxml::Parser::CreateElement(bool complex)
     {
         p_ElementStack.emplace(new ValueElement());
     }
-    p_ElementStack.top()->ElementName = p_ElementNameStream.str();
+    p_ElementStack.top()->ElementName = elementName;
 }
 
 void nxml::Parser::CloseElement()
 {
     Element* e = p_ElementStack.top();
     p_ElementStack.pop();
+
+    if (p_ElementStack.empty())
+    {
+        p_ElementStack.push(e);
+        return;
+    }
 
     ComplexElement* parent = static_cast<ComplexElement*>(p_ElementStack.top());
 
@@ -361,6 +368,7 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
             break;
         case Mode::ElementClose:
             LogCurrentElementName();
+            CloseElement();
             ClearCurrentElement();
             SwitchMode(Mode::WaitForElementOpen, c); 
             break;
