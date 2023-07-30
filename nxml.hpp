@@ -1,8 +1,10 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <stack>
 #include <iostream>
 #include <sstream>
+#include <cwctype>
 
 namespace nxml
 {
@@ -43,18 +45,6 @@ namespace nxml
         T Value;
     };
 
-    /// <summary>
-    /// structure to encapsulate tags in element definitions
-    /// </summary>
-    struct Tag : ISerializable
-    {
-        ValueType Type;
-        
-        string Key;
-        string Value;
-
-        vector<Attribute> Attributes;
-    };
 
     /// <summary>
     /// Probably dont need to change this...
@@ -73,8 +63,18 @@ namespace nxml
     /// </summary>
     struct Element : ISerializable
     {
-        string Name;
-        vector<Tag> Tags;        
+        string ElementName;
+        vector<Attribute> Attributes;        
+    };
+
+    struct ValueElement : Element
+    {
+        string InnerValue;
+    };
+
+    struct ComplexElement : Element
+    {
+        vector<Element*> InnerElements;
     };
 
     struct Document
@@ -98,7 +98,9 @@ namespace nxml
             WaitForAttribute,
             TagAttributeName,
             TagAttributeValue,
-            TagClose
+            TagClose,
+            GetInnerTagType,
+            TagValue,
         };
     protected:
         Mode p_Mode;
@@ -107,6 +109,8 @@ namespace nxml
         stringstream p_TagValueStream;
         stringstream p_AttributeNameStream;
         stringstream p_AttributeValueStream;
+
+        stack<Element*> p_ElementStack;
         
         string GetModeName(Mode& mode);
 
@@ -114,8 +118,18 @@ namespace nxml
         void ProcessCharacter(std::string& xmlString, int charIndex);
 
         void LogCurrentTagName();
+        void LogCurrentAttributes();
     };
 }
+
+
+
+
+
+
+
+
+
 // TODO Disable
 #define NXML_IMPL
 #ifdef NXML_IMPL
@@ -130,7 +144,20 @@ void nxml::Parser::LogCurrentTagName()
     // create tag object
     cout << "Current Tag Name : " << p_TagNameStream.str() << endl;
     // Clear tag streams
+    cout << "Current Tag Value : " << p_TagValueStream.str() << endl;
+    
     p_TagNameStream.str(std::string());
+    p_TagValueStream.str(std::string());
+}
+
+void nxml::Parser::LogCurrentAttributes()
+{
+    // create attribute object
+    cout << "Current Attribute Name : " << p_AttributeNameStream.str() << endl;
+    cout << "Current Attribute Value : " << p_AttributeValueStream.str() << endl;
+    // Clear streams
+    p_AttributeNameStream.str(std::string());
+    p_AttributeValueStream.str(std::string());
 }
 
 std::string nxml::Parser::GetModeName(nxml::Parser::Mode& mode)
@@ -151,6 +178,10 @@ std::string nxml::Parser::GetModeName(nxml::Parser::Mode& mode)
         return "TagAttributeName";
         case Mode::TagAttributeValue:
         return "TagAttributeValue";
+        case Mode::GetInnerTagType:
+        return "GetInnerTagType";
+        case Mode::TagValue:
+        return "TagValue";
         default:
         return "Unknown Mode Type";
     }
@@ -179,13 +210,14 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
         case Mode::TagOpen:
             if(c == '/')
             {
+                LogCurrentTagName();
                 SwitchMode(Mode::TagClose, c);
                 return;
             }
             if(c == '>')
             {
                 LogCurrentTagName();
-                SwitchMode(Mode::WaitForTagOpen, c);
+                SwitchMode(Mode::GetInnerTagType, c);
                 return;
             }
             if(c == ' ')
@@ -199,16 +231,9 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
             break;
         case Mode::WaitForAttribute:
             if(c == ' ') return;
-            // create attribute object
-            cout << "Current Attribute Name : " << p_AttributeNameStream.str() << endl;
-            cout << "Current Attribute Value : " << p_AttributeValueStream.str() << endl;
-            // Clear streams
-            p_AttributeNameStream.str(std::string());
-            p_AttributeValueStream.str(std::string());
-
             if(c == '>') 
             {
-                SwitchMode(Mode::WaitForTagOpen, c);
+                SwitchMode(Mode::GetInnerTagType, c);
                 return;
             }
             if(c == '/')
@@ -217,18 +242,35 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
                 return;
             }
             SwitchMode(Mode::TagAttributeName, c);
+            p_AttributeNameStream << c;
             break;    
         case Mode::TagAttributeName:
-            if(c == '=') SwitchMode(Mode::TagAttributeValue, c);
+            if(c == '=') 
+            {
+                SwitchMode(Mode::TagAttributeValue, c);
+                return;
+            }
+            if(c == '"')
+            {
+                SwitchMode(Mode::TagAttributeValue, c);
+                return;
+            } 
             // push char into attribute name stream
             p_AttributeNameStream << c;
             break;
         case Mode::TagAttributeValue:
             if(c == '=') return;
-            if(c == '"' && p_AttributeValueStream.str().size() < 0) return;
-            if(c == '"')
+            if(c == '"') return;
+            if(c == ' ')
             {
+                LogCurrentAttributes();
                 SwitchMode(Mode::WaitForAttribute, c);
+                return;
+            }
+            if(c == '>')
+            {
+                LogCurrentAttributes();
+                SwitchMode(Mode::GetInnerTagType, c);
                 return;
             }
             // push char into attribute value stream;
@@ -237,6 +279,29 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
         case Mode::TagClose:
             LogCurrentTagName();
             SwitchMode(Mode::WaitForTagOpen, c); 
+            break;
+        case Mode::GetInnerTagType:
+            if(c == ' ') return;
+            if(c == '<')
+            {
+                SwitchMode(Mode::TagOpen, c);
+                return;
+            }
+            if(iswalnum(c))
+            {
+                p_TagValueStream << c;
+                SwitchMode(Mode::TagValue, c);
+                return;
+            }
+
+            break;
+        case Mode::TagValue:
+            if(c == '<')
+            {
+                SwitchMode(Mode::TagClose, c);
+                return;
+            }
+            p_TagValueStream << c;
             break;
         default:
             break;
