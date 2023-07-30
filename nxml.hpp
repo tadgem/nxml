@@ -7,6 +7,10 @@
 #include <cwctype>
 #include <sstream>
 #include <cassert>
+#include <string>
+#include <algorithm>
+#include <cctype>
+
 namespace nxml
 {
     using namespace std;
@@ -80,7 +84,7 @@ namespace nxml
     {
         string InnerValue;
 
-        virtual string  ToString()      override {return "<ElementName>InnerValue</ElementName>";}
+        virtual string  ToString()      override;
         virtual void    FromString(string str)    override {}
     };
 
@@ -90,17 +94,20 @@ namespace nxml
     struct ComplexElement : Element
     {
         vector<Element*> InnerElements;
-        virtual string  ToString()      override {return "<ElementName>*InnerElements*/ElementName>";}
+        virtual string  ToString()      override;
         virtual void    FromString(string str)    override {}
     };
 
     /// <summary>
     /// Container for declaration and root element
     /// </summary>
-    struct Document
+    struct Document : ISerializable
     {
         Declaration Decl;
         vector<Element*> RootElements;
+
+        virtual string  ToString()      override;
+        virtual void    FromString(string str)    override {}
     };
 
     class Parser
@@ -152,12 +159,6 @@ namespace nxml
 
 
 
-
-
-
-
-
-
 // TODO Disable
 #define NXML_IMPL
 #ifdef NXML_IMPL
@@ -168,6 +169,53 @@ nxml::Parser::Parser()
 {
     p_Mode = Parser::Mode::Declaration;
 }
+
+std::string nxml::ValueElement::ToString()
+{
+    stringstream s;
+    s << '<' << ElementName;
+    for (auto attr : Attributes)
+    {
+        s << ' ' << attr.Key << '=' << '"' << attr.SerializedValue << '"';
+    }
+    s << '>' << InnerValue << "</" << ElementName << '>';
+    return s.str();
+}
+
+std::string nxml::ComplexElement::ToString()
+{
+    stringstream s;
+    s << '<' << ElementName;
+    for (auto attr : Attributes)
+    {
+        s << ' ' << attr.Key << '=' << '"' << attr.SerializedValue << '"';
+    }
+    s << '>'; 
+    for (auto inner : InnerElements)
+    {
+        s << inner->ToString();
+    }
+
+    s << "</" << ElementName << '>';
+
+    return s.str();
+}
+
+std::string nxml::Document::ToString()
+{
+    stringstream s;
+    s << Decl.ToString();
+    for (auto e: RootElements)
+    {
+        s << e->ToString();
+    }
+
+    string docStringRaw = s.str();
+    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\n'), docStringRaw.cend());
+    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\t'), docStringRaw.end());
+    return docStringRaw;
+}
+
 
 void nxml::Parser::ClearCurrentElement()
 {        

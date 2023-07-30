@@ -13,6 +13,12 @@ std::string LoadFileAsString(const char* path) {
     return str;
 }
 
+void SaveStringToFile(const char* path, std::string& str) {
+    std::ofstream out(path);
+    out << str;
+    out.close();
+}
+
 void RecursePrintElement(nxml::Element* element)
 {
     std::cout << "Element Name : " << element->ElementName << std::endl;
@@ -25,8 +31,8 @@ int main() {
 
     nxml::Document doc = parser.GetFromString(sampleXml);
 
-    for(nxml::Element* e : doc.RootElements)
-    {
-        RecursePrintElement(e);
-    }
+    string parsedXml = doc.ToString();
+    SaveStringToFile("../sample_parsed.xml", parsedXml);
+
+    cout << "Parsex XML String : " << parsedXml << endl;
 }
