@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace nxml
 {
@@ -32,7 +33,13 @@ namespace nxml
     struct Attribute : ISerializable
     {
         string Key;
-        string Value;
+        string SerializedValue;
+    };
+
+    template <typename T>
+    struct TAttribute : Attribute
+    {
+        T Value;
     };
 
     /// <summary>
@@ -82,13 +89,13 @@ namespace nxml
         {
             Declaration,
             TagOpen,
-            TagAttribute,
-            TagValue,
+            TagAttributeName,
+            TagAttributeValue,
             TagClose
         };
 
         Mode p_Mode;
-
+        void HandleParserStateSwitch(std::string& xmlString, int charIndex);
     public:
         Parser();
         Document GetFromString(string& xml);
@@ -104,20 +111,37 @@ nxml::Parser::Parser()
     p_Mode = Parser::Mode::Declaration;
 }
 
+void nxml::Parser::HandleParserStateSwitch(std::string& xmlString, int charIndex)
+{
+    char c  = xmlString.at(charIndex);
+    char nc = xmlString.at(charIndex + 1);
+
+    switch(p_Mode)
+    {
+        case Mode::Declaration:
+            if(c == '?' && nc == '>') p_Mode = Mode::TagOpen;
+            break;
+        case Mode::TagOpen:
+            break;
+        case Mode::TagAttributeName:
+            break;
+        case Mode::TagAttributeValue:
+            break;
+        case Mode::TagClose:
+            break;
+        default:
+            std::cout << "nxml::Parser : Error : Unknown parsing state";
+            break;
+    }
+}
+
 nxml::Document nxml::Parser::GetFromString(std::string& xml)
 {
-    std::istringstream iter(xml);
-    std::string line;
-
     nxml::Document doc;
 
-    while (getline(iter, line))
+    for(int i = 0; i < xml.size(); i++)
     {
-        for(char c : line)
-        {
-            std::cout << c << std::endl;
-        }
-        std::cout << "Line : " << line << std::endl;
+        HandleParserStateSwitch(xml, i);
     }
 
     return doc;
