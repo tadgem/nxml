@@ -10,6 +10,7 @@
 #include <string>
 #include <algorithm>
 #include <cctype>
+#include <regex>
 
 namespace nxml
 {
@@ -201,6 +202,7 @@ std::string nxml::ComplexElement::ToString()
     return s.str();
 }
 
+
 std::string nxml::Document::ToString()
 {
     stringstream s;
@@ -210,9 +212,14 @@ std::string nxml::Document::ToString()
         s << e->ToString();
     }
 
+    std::regex e("[ \t]+");   // matches trailing whitespace
+
     string docStringRaw = s.str();
+    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\r'), docStringRaw.end());
     docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\n'), docStringRaw.cend());
     docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\t'), docStringRaw.end());
+
+    docStringRaw = std::regex_replace (docStringRaw,e," $2");
     return docStringRaw;
 }
 
