@@ -219,7 +219,7 @@ std::string nxml::Document::ToString()
     docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\n'), docStringRaw.cend());
     docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\t'), docStringRaw.end());
 
-    docStringRaw = std::regex_replace (docStringRaw,e," $2");
+    docStringRaw = std::regex_replace (docStringRaw,e," $2"); // replace all trailing space wioth single space.
     return docStringRaw;
 }
 
