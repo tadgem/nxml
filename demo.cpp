@@ -27,6 +27,7 @@ void RecursePrintElement(nxml::Element* element)
 int main() {
     using namespace std;
     string sampleXml = LoadFileAsString("../sample.xml");
+    nxml::CleanWhiteSpace(sampleXml);
     nxml::Parser parser;
 
     nxml::Document doc = parser.GetFromString(sampleXml);
@@ -34,5 +35,6 @@ int main() {
     string parsedXml = doc.ToString();
     SaveStringToFile("../sample_parsed.xml", parsedXml);
 
-    cout << "Parsex XML String : " << parsedXml << endl;
+    cout << "Original XML String Length : " << sampleXml.size() << "\n";
+    cout << "Parsed XML String Length : "   << parsedXml.size() << "\n";
 }

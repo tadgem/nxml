@@ -156,6 +156,8 @@ namespace nxml
         void ClearCurrentElement();
         void ClearCurrentAttribute();
     };
+
+    static void CleanWhiteSpace(string& input);
 }
 
 
@@ -175,7 +177,7 @@ std::string nxml::ValueElement::ToString()
 {
     stringstream s;
     s << '<' << ElementName;
-    for (auto attr : Attributes)
+    for (Attribute& attr : Attributes)
     {
         s << ' ' << attr.Key << '=' << '"' << attr.SerializedValue << '"';
     }
@@ -187,7 +189,7 @@ std::string nxml::ComplexElement::ToString()
 {
     stringstream s;
     s << '<' << ElementName;
-    for (auto attr : Attributes)
+    for (Attribute& attr : Attributes)
     {
         s << ' ' << attr.Key << '=' << '"' << attr.SerializedValue << '"';
     }
@@ -212,17 +214,12 @@ std::string nxml::Document::ToString()
         s << e->ToString();
     }
 
-    std::regex e("[ \t]+");   // matches trailing whitespace
+    
 
     string docStringRaw = s.str();
-    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\r'), docStringRaw.end());
-    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\n'), docStringRaw.cend());
-    docStringRaw.erase(std::remove(docStringRaw.begin(), docStringRaw.end(), '\t'), docStringRaw.end());
-
-    docStringRaw = std::regex_replace (docStringRaw,e," $2"); // replace all trailing space wioth single space.
+    CleanWhiteSpace(docStringRaw);
     return docStringRaw;
 }
-
 
 void nxml::Parser::ClearCurrentElement()
 {        
@@ -343,12 +340,14 @@ void nxml::Parser::SwitchMode(nxml::Parser::Mode newMode, char current)
 
 void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
 {
-    if (charIndex + 1 == xmlString.size())
+    uint32_t nextIndex = static_cast<uint32_t>(charIndex + 1);
+
+    if (nextIndex == xmlString.size())
     {
         return;
     }
     char c  = xmlString.at(charIndex);
-    char nc = xmlString.at(charIndex + 1);
+    char nc = xmlString.at(nextIndex);
 
     switch(p_Mode)
     {
@@ -376,7 +375,6 @@ void nxml::Parser::ProcessCharacter(std::string& xmlString, int charIndex)
                 SwitchMode(Mode::WaitForAttribute, c);
                 return;
             }
-            // push char into Element name stream
             p_ElementNameStream << c;
             break;
         case Mode::WaitForAttribute:
@@ -485,4 +483,16 @@ nxml::Document nxml::Parser::GetFromString(std::string& xml)
 
     return doc;
 }
+
+void nxml::CleanWhiteSpace(std::string& input)
+{
+    static std::regex e("[ \t]+");   // matches trailing whitespace
+    input.erase(std::remove(input.begin(), input.end(), '\r'), input.end());
+    input.erase(std::remove(input.begin(), input.end(), '\n'), input.cend());
+    input.erase(std::remove(input.begin(), input.end(), '\t'), input.end());
+
+    input = std::regex_replace(input, e, " $2"); // replace all trailing space wioth single space.
+    
+}
+
 #endif
