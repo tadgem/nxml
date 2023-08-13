@@ -1,40 +1,38 @@
-#include <iostream>
-#include <fstream>
-
+#define NXML_IMPL;
 #include "nxml.hpp"
+using namespace std;
 
-std::string LoadFileAsString(const char* path) {
-    std::fstream file;
-    file.open(path);
-
-    std::string str((std::istreambuf_iterator<char>(file)),
-                 std::istreambuf_iterator<char>());
-
-    return str;
-}
-
-void SaveStringToFile(const char* path, std::string& str) {
-    std::ofstream out(path);
-    out << str;
-    out.close();
-}
-
-void RecursePrintElement(nxml::Element* element)
+struct Vec2
 {
-    std::cout << "Element Name : " << element->ElementName << std::endl;
-}
+    double X;
+    double Y;
+};
+
+struct TestStruct
+{
+    string Name;
+    float  SomeFloat;
+    double SomeDouble;
+    Vec2   SomeUserType;
+
+    operator nxml::Element& () { return nxml::Element::Invalid; }
+    operator nxml::Element () const { return nxml::Element::Invalid; }
+
+
+};
 
 int main() {
-    using namespace std;
-    string sampleXml = LoadFileAsString("../sample.xml");
-    nxml::CleanWhiteSpace(sampleXml);
-    nxml::Parser parser;
-
-    nxml::Document doc = parser.GetFromString(sampleXml);
+    // Simple
+    string sampleXml = nxml::utils::LoadFileAsString("../sample.xml");
+    nxml::Document doc = nxml::ParseString(sampleXml);
+    nxml::Element bookElement = doc["catalog"][{"book", "id", "bk103"}];
 
     string parsedXml = doc.ToString();
-    SaveStringToFile("../sample_parsed.xml", parsedXml);
+    nxml::utils::SaveStringToFile("../sample_parsed.xml", parsedXml);
 
-    cout << "Original XML String Length : " << sampleXml.size() << "\n";
-    cout << "Parsed XML String Length : "   << parsedXml.size() << "\n";
+    // Usertypes
+    Vec2 v{ 1.0, 2.0 };
+    TestStruct userData{ "Hello", 1.5f, 3.0, v };
+
+    nxml::Element userDataElement = userData;
 }
